@@ -1,0 +1,441 @@
+<!doctype html>
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title></title>
+  <meta name="description" content="">
+
+  <meta name="viewport" content="width=device-width">
+  <link rel="stylesheet" href="css/style.css">
+
+  <style type="text/css">
+    #main{ width: 960px; margin: 0 auto;}
+    #graph-orders{ width: 378px; height: 172px; background: #eee; }
+    #graph-revenue{ width: 778px; height: 200px; background: #ccc; margin: 0 0 50px 0; }
+  </style>
+
+</head>
+<body>
+
+  <div id="main">
+    <h1>Graph Test!</h1>
+    <div id="graph-revenue"></div>
+    <div id="graph-orders"></div>
+  </div>
+
+
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script>window.jQuery || document.write('<script src="js/libs/jquery-1.7.1.min.js"><\/script>')</script>
+
+  <script src="js/raphael-min.js"></script>
+  <script src="js/g.raphael-min.js"></script>
+  <script src="js/g.line-min.js"></script>
+
+
+  <script>
+var periodical_facts = {
+  "start_date": "2011-11-28",
+  "end_date": "2012-02-28",
+  "periodical_facts": {
+    "type": "daily",
+    "data": [{
+      "visits_count": 22,
+      "date": "2011-11-28",
+      "show": true
+    }, {
+      "visits_count": 18,
+      "date": "2011-11-29",
+      "show": false
+    }, {
+      "visits_count": 40,
+      "date": "2011-11-30",
+      "show": false
+    }, {
+      "visits_count": 30,
+      "date": "2011-12-01",
+      "show": true
+    }, {
+      "visits_count": 14,
+      "date": "2011-12-02",
+      "show": false
+    }, {
+      "visits_count": 20,
+      "date": "2011-12-03",
+      "show": false
+    }, {
+      "visits_count": 18,
+      "date": "2011-12-04",
+      "show": false
+    }, {
+      "visits_count": 24,
+      "date": "2011-12-05",
+      "show": false
+    }, {
+      "visits_count": 24,
+      "date": "2011-12-06",
+      "show": false
+    }, {
+      "visits_count": 18,
+      "revenue": 0,
+      "orders_count": 1,
+      "date": "2011-12-07",
+      "show": false
+    }, {
+      "visits_count": 28,
+      "date": "2011-12-08",
+      "show": false
+    }, {
+      "visits_count": 18,
+      "date": "2011-12-09",
+      "show": false
+    }, {
+      "visits_count": 24,
+      "date": "2011-12-10",
+      "show": false
+    }, {
+      "visits_count": 26,
+      "date": "2011-12-11",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2011-12-12",
+      "show": false
+    }, {
+      "visits_count": 16,
+      "date": "2011-12-13",
+      "show": false
+    }, {
+      "visits_count": 20,
+      "date": "2011-12-14",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2011-12-15",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2011-12-16",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2011-12-17",
+      "show": false
+    }, {
+      "visits_count": 20,
+      "date": "2011-12-18",
+      "show": false
+    }, {
+      "visits_count": 11,
+      "date": "2011-12-19",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2011-12-20",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2011-12-21",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2011-12-22",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2011-12-23",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2011-12-24",
+      "show": false
+    }, {
+      "visits_count": 2,
+      "date": "2011-12-25",
+      "show": false
+    }, {
+      "visits_count": 4,
+      "date": "2011-12-26",
+      "show": false
+    }, {
+      "visits_count": 7,
+      "date": "2011-12-27",
+      "show": false
+    }, {
+      "visits_count": 7,
+      "date": "2011-12-28",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2011-12-29",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2011-12-30",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2011-12-31",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2012-01-01",
+      "show": true
+    }, {
+      "visits_count": 6,
+      "date": "2012-01-02",
+      "show": false
+    }, {
+      "visits_count": 17,
+      "date": "2012-01-03",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-01-04",
+      "show": false
+    }, {
+      "visits_count": 7,
+      "date": "2012-01-05",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-01-06",
+      "show": false
+    }, {
+      "visits_count": 7,
+      "date": "2012-01-07",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-01-08",
+      "show": false
+    }, {
+      "visits_count": 18,
+      "date": "2012-01-09",
+      "show": false
+    }, {
+      "visits_count": 11,
+      "date": "2012-01-10",
+      "show": false
+    }, {
+      "visits_count": 13,
+      "date": "2012-01-11",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-01-12",
+      "show": false
+    }, {
+      "visits_count": 16,
+      "date": "2012-01-13",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2012-01-14",
+      "show": false
+    }, {
+      "visits_count": 4,
+      "date": "2012-01-15",
+      "show": false
+    }, {
+      "visits_count": 7,
+      "date": "2012-01-16",
+      "show": false
+    }, {
+      "visits_count": 19,
+      "date": "2012-01-17",
+      "show": false
+    }, {
+      "visits_count": 21,
+      "date": "2012-01-18",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-01-19",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-01-20",
+      "show": false
+    }, {
+      "visits_count": 3,
+      "date": "2012-01-21",
+      "show": false
+    }, {
+      "visits_count": 11,
+      "date": "2012-01-22",
+      "show": false
+    }, {
+      "visits_count": 23,
+      "date": "2012-01-23",
+      "show": false
+    }, {
+      "visits_count": 17,
+      "date": "2012-01-24",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-01-25",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-01-26",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-01-27",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-01-28",
+      "show": false
+    }, {
+      "visits_count": 11,
+      "date": "2012-01-29",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2012-01-30",
+      "show": false
+    }, {
+      "visits_count": 15,
+      "date": "2012-01-31",
+      "show": false
+    }, {
+      "visits_count": 12,
+      "date": "2012-02-01",
+      "show": true
+    }, {
+      "visits_count": 8,
+      "date": "2012-02-02",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2012-02-03",
+      "show": false
+    }, {
+      "visits_count": 16,
+      "date": "2012-02-04",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2012-02-05",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2012-02-06",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2012-02-07",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-02-08",
+      "show": false
+    }, {
+      "visits_count": 9,
+      "date": "2012-02-09",
+      "show": false
+    }, {
+      "visits_count": 12,
+      "date": "2012-02-10",
+      "show": false
+    }, {
+      "visits_count": 12,
+      "date": "2012-02-11",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-02-12",
+      "show": false
+    }, {
+      "visits_count": 15,
+      "date": "2012-02-13",
+      "show": false
+    }, {
+      "visits_count": 14,
+      "date": "2012-02-14",
+      "show": false
+    }, {
+      "visits_count": 5,
+      "date": "2012-02-15",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-02-16",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-02-17",
+      "show": false
+    }, {
+      "visits_count": 8,
+      "date": "2012-02-18",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2012-02-19",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2012-02-20",
+      "show": false
+    }, {
+      "visits_count": 12,
+      "date": "2012-02-21",
+      "show": false
+    }, {
+      "visits_count": 16,
+      "date": "2012-02-22",
+      "show": false
+    }, {
+      "visits_count": 12,
+      "revenue": 225.66,
+      "orders_count": 1,
+      "date": "2012-02-23",
+      "show": false
+    }, {
+      "visits_count": 10,
+      "date": "2012-02-24",
+      "show": false
+    }, {
+      "visits_count": 2,
+      "date": "2012-02-25",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-02-26",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-02-27",
+      "show": false
+    }, {
+      "visits_count": 6,
+      "date": "2012-02-28",
+      "show": true
+    }]
+  }
+};
+  </script>
+
+
+
+  <script src="js/script.js"></script>
+
+
+
+
+  <script>
+    var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];
+    (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+    g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
+    s.parentNode.insertBefore(g,s)}(document,'script'));
+  </script>
+</body>
+</html>
