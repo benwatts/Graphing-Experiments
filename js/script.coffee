@@ -5,24 +5,20 @@ class Graph
 
   constructor: (domId, rawData, dataKey, options={}) -> 
     @domId    = domId
-    @rawData  = rawData
     @dataKey  = dataKey
-    @opt      = $.extend
+    @opt      = $.extend {
                   debug  : false,
                   height : 200,
                   width  : 800,
-                  gutter :
-                    top: 10, 
-                    right: 0, 
-                    bottom: 20, 
-                    left: 40
-                  options
+                  gutter : { top: 10, right: 10, bottom: 20, left: 40 }
+                }, options
 
     @chartX      = @opt.gutter.left
     @chartY      = @opt.gutter.top
     @chartWidth  = @opt.width  - @opt.gutter.left - @opt.gutter.right
     @chartHeight = @opt.height - @opt.gutter.top  - @opt.gutter.bottom
-    @maxVal = @minVal = 0    
+
+    @dataMaxVal = @dataMinVal = 0    
 
     if document.getElementById(@domId)?
       @paper = Raphael @domId, @opt.width, @opt.height
@@ -31,52 +27,71 @@ class Graph
       bg = @paper.rect(0,0, @opt.width, @opt.height)
       bg.attr('stroke-width', 1)
 
-      @highlightColumns()                
+      @data = @normalizedData(rawData)
 
-      @data = @normalizedData()
+      @drawGraph()
 
-      @paper.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
+      #@paper.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
 
 
-  normalizedData: ->
-    numDataPoints = @rawData.length - 1
+  drawGraph: -> 
+    numItems = @data.length
+    yScale = @chartHeight / @dataMaxVal
+    xScale = @chartWidth / numItems
+    sWidth = 4
+
+    for index, point of @data
+
+      # create column
+      c = @paper.rect( index * xScale + @chartX, @chartY, xScale, @chartHeight )
+      c.attr
+        'fill': if index % 2 == 0 then '#ff0' else '#09f'
+        'stroke-width': 0
+
+      # create symbol
+      sx = Math.round(c.attr('x') + sWidth)
+      sy = Math.round(point.value * -yScale + @chartY + @chartHeight)
+      s = @paper.circle(sx, sy, sWidth).attr( { 'fill': '#444', 'stroke-width': 0 })
+
+      point.column = c
+      point.symbol = s
+
+    
+    # loop through all the data points, create columns, add symbol finally, connect those bitches 
+    #for i in [0..numItemsnumItems]
+    #  console.log 'lol'
+
+
+
+  normalizedData: (data) ->
+    numDataPoints = data.length - 1
     dataPoints = []
-    @values = []
+    values = []
 
     for i in [0..numDataPoints]
-      item = @rawData[i]
-      @values.push(item[@dataKey])
-      dataPoints.push new DataPoint(item[@dataKey], 'prettyValue', item['date'], item['show'] )
+      item = data[i]
+      val = if item[@dataKey]? then item[@dataKey] else 0
+      values.push(val)      
+      dataPoints.push new DataPoint( val, item[@dataKey], 'prettyValue', item['date'], item['show'] )
 
-    @maxVal = Math.max.apply( Math, @values );
-    @minVal = Math.min.apply( Math, @values );
+    @dataMaxVal = Math.max.apply( Math, values )
+    @dataMinVal = Math.min.apply( Math, values )
+
+    @values = values # temp
 
     return dataPoints
 
 
-  highlightColumns: ->
-    numDataPoints = @rawData.length
-    colWidth = (@chartWidth/numDataPoints) # no subpixel column widths 
-    colWidthRemainder = @chartWidth - numDataPoints * colWidth
-
-    #highlights alternating columns 
-    for point in [0..numDataPoints]
-      col = @paper.rect(point*colWidth+@opt.gutter.left, @opt.gutter.top, colWidth, @chartHeight)
-      fillColour = if point % 2 == 0 then '#ff0' else '#09f'
-      col.attr('fill', fillColour)
-      col.attr('stroke-width', 0)
-
-
-
-
 ### 
   DATAPOINT! 
-  ALALALALALALALALALALAL
+  I DON'T KNOW WHAT I'M DOING. 
 
        value -- raw value 
  prettyValue -- value to display in bubble
       xLabel -- label for x axis
   showXLabel -- show label on x axis?
+      column -- reference to the svg column
+      symbol -- reference to the svg symbol
 
 ###
 class DataPoint 
@@ -85,3 +100,8 @@ class DataPoint
     @prettyValue = prettyValue
     @xLabel      = xLabel
     @showXLabel  = showXLabel
+    @x
+    @y
+    @column
+    @symbol 
+
