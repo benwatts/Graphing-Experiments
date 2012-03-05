@@ -2,8 +2,14 @@
   var DataPoint, Graph;
 
   $(document).ready(function() {
-    var myFirstChart;
-    return myFirstChart = new Graph('graph-revenue', testJson.periodical_facts.data, 'visits_count', {
+    var ordersChart, revenueChart, visitorsChart;
+    revenueChart = new Graph('graph-revenue', testJson_small.periodical_facts.data, 'visits_count', {
+      debug: true
+    });
+    visitorsChart = new Graph('graph-visitors', testJson_small.periodical_facts.data, 'visits_count', {
+      debug: true
+    });
+    return ordersChart = new Graph('graph-orders', testJson_large.periodical_facts.data, 'visits_count', {
       debug: true
     });
   });
@@ -17,8 +23,8 @@
       this.dataKey = dataKey;
       this.opt = $.extend({
         debug: false,
-        height: 200,
-        width: 800,
+        height: $('#' + domId).height(),
+        width: $('#' + domId).width(),
         gutter: {
           top: 10,
           right: 10,
@@ -41,30 +47,39 @@
     }
 
     Graph.prototype.drawGraph = function() {
-      var c, index, numItems, point, s, sWidth, sx, sy, xScale, yScale, _ref, _results;
+      var c, i, index, line, numItems, pathConnectingPoints, point, prevPoint, s, sWidth, sx, sy, xScale, yScale, _ref;
       numItems = this.data.length;
       yScale = this.chartHeight / this.dataMaxVal;
       xScale = this.chartWidth / numItems;
       sWidth = 4;
+      pathConnectingPoints = [];
       _ref = this.data;
-      _results = [];
       for (index in _ref) {
         point = _ref[index];
+        i = parseInt(index);
         c = this.paper.rect(index * xScale + this.chartX, this.chartY, xScale, this.chartHeight);
         c.attr({
-          'fill': index % 2 === 0 ? '#ff0' : '#09f',
+          'fill': index % 2 === 0 ? '#eee' : '#e0e0e0',
           'stroke-width': 0
         });
-        sx = Math.round(c.attr('x') + sWidth);
+        sx = Math.round(c.attr('x') + xScale / 2);
         sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
         s = this.paper.circle(sx, sy, sWidth).attr({
-          'fill': '#444',
           'stroke-width': 0
         });
         point.column = c;
-        _results.push(point.symbol = s);
+        point.symbol = s;
+        if (i < 1) {
+          pathConnectingPoints = pathConnectingPoints.concat(['M', this.chartX, this.chartHeight + this.chartY, 'L', sx, sy]);
+        } else if (i === numItems - 1) {
+          pathConnectingPoints = pathConnectingPoints.concat(['M', sx, sy, 'L', this.chartWidth + this.chartX, this.chartHeight + this.chartY]);
+        }
+        if (this.data[index - 1]) {
+          prevPoint = this.data[index - 1].symbol;
+          pathConnectingPoints = pathConnectingPoints.concat(['M', prevPoint.attr('cx'), prevPoint.attr('cy'), 'L', sx, sy]);
+        }
       }
-      return _results;
+      return line = this.paper.path(pathConnectingPoints).attr('fill', '#0099ff');
     };
 
     Graph.prototype.normalizedData = function(data) {

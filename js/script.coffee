@@ -1,5 +1,8 @@
 $(document).ready ->
-  myFirstChart = new Graph('graph-revenue',testJson.periodical_facts.data, 'visits_count', {debug: true} )
+  revenueChart  = new Graph('graph-revenue',testJson_small.periodical_facts.data, 'visits_count', {debug: true} )
+  visitorsChart = new Graph('graph-visitors',testJson_small.periodical_facts.data, 'visits_count', {debug: true} )
+  ordersChart   = new Graph('graph-orders',testJson_large.periodical_facts.data, 'visits_count', {debug: true} )  
+
 
 class Graph
 
@@ -8,8 +11,8 @@ class Graph
     @dataKey  = dataKey
     @opt      = $.extend {
                   debug  : false,
-                  height : 200,
-                  width  : 800,
+                  height : $('#'+domId).height(),
+                  width  : $('#'+domId).width(),
                   gutter : { top: 10, right: 10, bottom: 20, left: 40 }
                 }, options
 
@@ -39,24 +42,38 @@ class Graph
     yScale = @chartHeight / @dataMaxVal
     xScale = @chartWidth / numItems
     sWidth = 4
+    pathConnectingPoints = []
 
     for index, point of @data
+
+      i = parseInt(index);
 
       # create column
       c = @paper.rect( index * xScale + @chartX, @chartY, xScale, @chartHeight )
       c.attr
-        'fill': if index % 2 == 0 then '#ff0' else '#09f'
+        'fill': if index % 2 == 0 then '#eee' else '#e0e0e0'
         'stroke-width': 0
 
       # create symbol
-      sx = Math.round(c.attr('x') + sWidth)
+      sx = Math.round(c.attr('x') + xScale / 2)
       sy = Math.round(point.value * -yScale + @chartY + @chartHeight)
-      s = @paper.circle(sx, sy, sWidth).attr( { 'fill': '#444', 'stroke-width': 0 })
+      s = @paper.circle(sx, sy, sWidth).attr( { 'stroke-width': 0 })
 
       point.column = c
       point.symbol = s
 
-    
+      if i < 1 
+        pathConnectingPoints = pathConnectingPoints.concat(['M', @chartX, @chartHeight + @chartY, 'L', sx, sy])        
+      else if i == numItems-1
+        pathConnectingPoints = pathConnectingPoints.concat(['M', sx, sy, 'L', @chartWidth + @chartX, @chartHeight + @chartY])
+
+      if @data[index-1]
+        prevPoint = @data[index-1].symbol
+        pathConnectingPoints = pathConnectingPoints.concat(['M', prevPoint.attr('cx'), prevPoint.attr('cy'), 'L', sx, sy])
+
+    line = @paper.path(pathConnectingPoints).attr('fill', '#0099ff')
+    #fill = @paper.path(pathConnectingPoints).attr('fill')
+
     # loop through all the data points, create columns, add symbol finally, connect those bitches 
     #for i in [0..numItemsnumItems]
     #  console.log 'lol'
