@@ -10,19 +10,20 @@
       debug: true
     });
     return ordersChart = new Graph('graph-orders', testJson_large.periodical_facts.data, 'visits_count', {
-      debug: true
+      debug: true,
+      symbol: {
+        visible: false
+      }
     });
   });
 
   Graph = (function() {
 
     function Graph(domId, rawData, dataKey, options) {
-      var bg;
       if (options == null) options = {};
       this.domId = domId;
       this.dataKey = dataKey;
       this.opt = $.extend({
-        debug: false,
         height: $('#' + domId).height(),
         width: $('#' + domId).width(),
         gutter: {
@@ -30,6 +31,18 @@
           right: 10,
           bottom: 20,
           left: 40
+        },
+        symbol: {
+          visible: true,
+          width: 4,
+          fill: '90-#3084ca-#5298d3',
+          strokeWidth: 2,
+          strokeColour: '#fff'
+        },
+        line: {
+          fill: '90-#f6f6f6-#fff',
+          strokeWidth: 2,
+          strokeColour: '#d4d4d4'
         }
       }, options);
       this.chartX = this.opt.gutter.left;
@@ -39,47 +52,63 @@
       this.dataMaxVal = this.dataMinVal = 0;
       if (document.getElementById(this.domId) != null) {
         this.paper = Raphael(this.domId, this.opt.width, this.opt.height);
-        bg = this.paper.rect(0, 0, this.opt.width, this.opt.height);
-        bg.attr('stroke-width', 1);
         this.data = this.normalizedData(rawData);
         this.drawGraph();
       }
     }
 
     Graph.prototype.drawGraph = function() {
-      var c, i, index, line, numItems, pathConnectingPoints, point, prevPoint, s, sWidth, sx, sy, xScale, yScale, _ref;
+      var c, fill, i, index, line, numItems, pathConnectingPoints, point, prevPoint, s, sx, sy, symbolOpacity, symbolSet, xScale, yScale, _ref;
       numItems = this.data.length;
       yScale = this.chartHeight / this.dataMaxVal;
       xScale = this.chartWidth / numItems;
-      sWidth = 4;
       pathConnectingPoints = [];
+      symbolOpacity = this.opt.symbol.visible ? 1.0 : 0;
+      symbolSet = this.paper.set();
       _ref = this.data;
       for (index in _ref) {
         point = _ref[index];
         i = parseInt(index);
         c = this.paper.rect(index * xScale + this.chartX, this.chartY, xScale, this.chartHeight);
         c.attr({
-          'fill': index % 2 === 0 ? '#eee' : '#e0e0e0',
-          'stroke-width': 0
-        });
-        sx = Math.round(c.attr('x') + xScale / 2);
-        sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
-        s = this.paper.circle(sx, sy, sWidth).attr({
+          'fill': index % 2 === 0 ? '#f9f9f9' : '#fff',
           'stroke-width': 0
         });
         point.column = c;
+        sx = Math.round(c.attr('x') + xScale / 2);
+        sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
+        s = this.paper.circle(sx, sy, this.opt.symbol.width);
+        s.attr({
+          'opacity': symbolOpacity,
+          'fill': this.opt.symbol.fill,
+          'stroke': this.opt.symbol.strokeColor,
+          'strokeWidth': this.opt.symbol.strokeWidth
+        });
         point.symbol = s;
+        symbolSet.push(s);
         if (i < 1) {
           pathConnectingPoints = pathConnectingPoints.concat(['M', this.chartX, this.chartHeight + this.chartY, 'L', sx, sy]);
-        } else if (i === numItems - 1) {
-          pathConnectingPoints = pathConnectingPoints.concat(['M', sx, sy, 'L', this.chartWidth + this.chartX, this.chartHeight + this.chartY]);
         }
         if (this.data[index - 1]) {
           prevPoint = this.data[index - 1].symbol;
-          pathConnectingPoints = pathConnectingPoints.concat(['M', prevPoint.attr('cx'), prevPoint.attr('cy'), 'L', sx, sy]);
+          pathConnectingPoints = pathConnectingPoints.concat(['L', sx, sy]);
+        }
+        if (i === numItems - 1) {
+          pathConnectingPoints = pathConnectingPoints.concat(['L', this.chartWidth + this.chartX, this.chartHeight + this.chartY]);
         }
       }
-      return line = this.paper.path(pathConnectingPoints).attr('fill', '#0099ff');
+      line = this.paper.path(pathConnectingPoints);
+      line.attr({
+        'stroke': this.opt.line.strokeColour,
+        'stroke-width': this.opt.line.strokeWidth
+      });
+      fill = this.paper.path(pathConnectingPoints);
+      fill.attr({
+        'fill': this.opt.line.fill,
+        'stroke-width': 0,
+        'fill-opacity': 0.05
+      });
+      return symbolSet.toFront();
     };
 
     Graph.prototype.normalizedData = function(data) {

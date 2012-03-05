@@ -67,8 +67,19 @@ td { vertical-align: top; }
 
 
 
+/** 
+ * 
+ */
+
+ @mixin gradient($color1, $color2) { background-color:$color1; background-image:-o-linear-gradient($color2, $color1); background-image: -webkit-gradient(linear,left bottom,left top,color-stop(0, $color1),color-stop(1, $color2));  background-image: -moz-linear-gradient(center bottom,$color1 0%, $color2 100%); }
 
 
+ #main { width: 960px; margin: 0 auto; }
+
+.graph circle { }
+
+.line-graph-large { width: 960px; height: 300px; }
+.line-graph-small { width: 460px; height: 200px; }
 
 
 
