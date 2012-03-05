@@ -69,8 +69,8 @@
       this.chartHeight = this.opt.height - this.opt.gutter.top - this.opt.gutter.bottom;
       this.dataMaxVal = this.dataMinVal = 0;
       if (document.getElementById(this.domId) != null) {
-        this.paper = Raphael(this.domId, this.opt.width, this.opt.height);
-        this.tooltip = $('#' + domId).append('<div class="tooltip"></div>').find('.tooltip:first');
+        this.canvas = Raphael(this.domId, this.opt.width, this.opt.height);
+        this.tooltip = $('#' + domId).append('<div class="tooltip"> <div class="tooltip-title">N/A</div> <div class="tooltip-value">0</div> <div class="tooltip-arrow"></div> </div>').find('.tooltip:first');
         this.data = this.normalizedData(rawData);
         this.drawGraph();
       }
@@ -80,14 +80,18 @@
       var tooltip;
       this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover);
       tooltip = this.graph.tooltip;
+      tooltip.bind('mouseLeave', this.hideTip);
+      tooltip.find('.tooltip-title').text(this.label);
+      tooltip.find('.tooltip-value').text(this.value);
       return tooltip.show().css({
-        left: this.symbol.attr('cx') - tooltip.width() / 2,
-        top: this.symbol.attr('cy') - tooltip.height() - 10
+        left: this.symbol.attr('cx') - tooltip.innerWidth() / 2,
+        top: this.symbol.attr('cy') - tooltip.height()
       });
     };
 
     Graph.prototype.hideTooltip = function(e, x, y) {
-      return this.symbol.attr('fill', this.graph.opt.symbol.fill);
+      this.symbol.attr('fill', this.graph.opt.symbol.fill);
+      return this.graph.tooltip.hide();
     };
 
     Graph.prototype.drawGraph = function() {
@@ -97,14 +101,14 @@
       xScale = this.chartWidth / numItems;
       pathConnectingPoints = [];
       symbolOpacity = this.opt.symbol.visible ? 1.0 : 0;
-      columnSet = this.paper.set();
-      symbolSet = this.paper.set();
-      linesSet = this.paper.set();
+      columnSet = this.canvas.set();
+      symbolSet = this.canvas.set();
+      linesSet = this.canvas.set();
       _ref = this.data;
       for (index in _ref) {
         point = _ref[index];
         i = parseInt(index);
-        c = this.paper.rect(index * xScale + this.chartX, this.chartY, xScale, this.chartHeight);
+        c = this.canvas.rect(index * xScale + this.chartX, this.chartY, xScale, this.chartHeight);
         c.attr({
           'fill': '#f00',
           'fill-opacity': 0,
@@ -114,7 +118,7 @@
         columnSet.push(c);
         sx = Math.round(c.attr('x') + xScale / 2);
         sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
-        s = this.paper.circle(sx, sy, this.opt.symbol.width);
+        s = this.canvas.circle(sx, sy, this.opt.symbol.width);
         s.attr({
           'opacity': symbolOpacity,
           'fill': this.opt.symbol.fill,
@@ -123,9 +127,9 @@
         });
         point.symbol = s;
         symbolSet.push(s);
-        c.hover(this.showTooltip, this.hideTooltip, point, point);
+        c.hover(this.colHover, this.colHoverOff, point, point);
         if (this.data[index].showXLabel) {
-          l = this.paper.path(['M', sx, this.chartY, 'V', this.chartY + this.chartHeight]).attr({
+          l = this.canvas.path(['M', sx, this.chartY, 'V', this.chartY + this.chartHeight]).attr({
             'stroke': '#eee'
           });
           linesSet.push(l);
@@ -141,12 +145,12 @@
           pathConnectingPoints = pathConnectingPoints.concat(['L', this.chartWidth + this.chartX, this.chartHeight + this.chartY]);
         }
       }
-      line = this.paper.path(pathConnectingPoints);
+      line = this.canvas.path(pathConnectingPoints);
       line.attr({
         'stroke': this.opt.line.strokeColour,
         'stroke-width': this.opt.line.strokeWidth
       });
-      fill = this.paper.path(pathConnectingPoints);
+      fill = this.canvas.path(pathConnectingPoints);
       fill.attr({
         'fill': this.opt.line.fill,
         'stroke-width': 0,
@@ -166,7 +170,7 @@
         item = data[i];
         val = item[this.dataKey] != null ? item[this.dataKey] : 0;
         values.push(val);
-        dataPoints.push(new DataPoint(this, val, item['date'], item['show']));
+        dataPoints.push(new DataPoint(this, val, item['date'], item['date'], item['show']));
       }
       this.dataMaxVal = Math.max.apply(Math, values);
       this.dataMinVal = Math.min.apply(Math, values);
@@ -175,9 +179,29 @@
     };
 
     Graph.prototype.newData = function(rawData) {
-      this.paper.clear();
+      this.canvas.clear();
       this.data = this.normalizedData(rawData.periodical_facts.data);
       return this.drawGraph();
+    };
+
+    Graph.prototype.colHover = function(e, x, y) {
+      var tooltip;
+      this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover);
+      tooltip = this.graph.tooltip;
+      $(tooltip).mousemove(function(e) {
+        return $(this).show();
+      });
+      tooltip.find('.tooltip-title').text(this.label);
+      tooltip.find('.tooltip-value').text(this.value);
+      return tooltip.show().css({
+        left: this.symbol.attr('cx') - tooltip.innerWidth() / 2,
+        top: this.symbol.attr('cy') - tooltip.height()
+      });
+    };
+
+    Graph.prototype.colHoverOff = function(e, x, y) {
+      this.symbol.attr('fill', this.graph.opt.symbol.fill);
+      return $(this.tooltip).hide();
     };
 
     return Graph;
@@ -198,9 +222,10 @@
 
   DataPoint = (function() {
 
-    function DataPoint(graph, value, xLabel, showXLabel) {
+    function DataPoint(graph, value, label, xLabel, showXLabel) {
       this.graph = graph;
       this.value = value;
+      this.label = label;
       this.xLabel = xLabel;
       this.showXLabel = showXLabel;
       this.column;

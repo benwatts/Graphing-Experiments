@@ -1,1 +1,38 @@
-{"start_date":"2012-03-04","end_date":"2012-03-04","periodical_facts":{"type":"hourly","data":[{"date":"2012-03-04 00:00:00","show":true},{"visits_count":1,"date":"2012-03-04 06:00:00","show":true},{"visits_count":1,"date":"2012-03-04 07:00:00","show":false},{"visits_count":1,"date":"2012-03-04 11:00:00","show":false},{"visits_count":1,"date":"2012-03-04 12:00:00","show":true},{"visits_count":2,"date":"2012-03-04 13:00:00","show":false}]}}
+{
+   "start_date":"2012-03-04",
+   "end_date":"2012-03-04",
+   "periodical_facts":{
+      "type":"hourly",
+      "data":[
+         {
+            "date":"2012-03-04 00:00:00",
+            "show":true
+         },
+         {
+            "visits_count":1,
+            "date":"2012-03-04 06:00:00",
+            "show":true
+         },
+         {
+            "visits_count":1,
+            "date":"2012-03-04 07:00:00",
+            "show":false
+         },
+         {
+            "visits_count":1,
+            "date":"2012-03-04 11:00:00",
+            "show":false
+         },
+         {
+            "visits_count":1,
+            "date":"2012-03-04 12:00:00",
+            "show":true
+         },
+         {
+            "visits_count":2,
+            "date":"2012-03-04 13:00:00",
+            "show":false
+         }
+      ]
+   }
+}

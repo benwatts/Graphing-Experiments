@@ -244,11 +244,29 @@ nav li {
   font-size: 14px; }
 
 .tooltip {
-  width: 20px;
-  height: 20px;
+  min-width: 70px;
+  padding: 4px 8px;
+  margin: -18px 0 0 0;
   background: #000;
   position: absolute;
-  z-index: 10; }
+  z-index: 1;
+  display: none;
+  font-size: 11px;
+  color: #ccc;
+  text-align: center; }
+  .tooltip .tooltip-value {
+    font-weight: bold;
+    color: #fff; }
+  .tooltip .tooltip-arrow {
+    position: absolute;
+    left: 50%;
+    margin-left: -4px;
+    bottom: -4px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid #000; }
 
 .ir {
   display: block;

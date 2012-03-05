@@ -59,30 +59,36 @@ class Graph
     @dataMaxVal = @dataMinVal = 0    
 
     if document.getElementById(@domId)?
-      @paper = Raphael @domId, @opt.width, @opt.height
+      @canvas = Raphael @domId, @opt.width, @opt.height
 
-      @tooltip = $('#'+domId).append('<div class="tooltip"></div>').find('.tooltip:first')
+      @tooltip = $('#'+domId).append('<div class="tooltip"> <div class="tooltip-title">N/A</div> <div class="tooltip-value">0</div> <div class="tooltip-arrow"></div> </div>').find('.tooltip:first')
 
       # draw a rect that's the same size as the canvas (debugging)
-      #bg = @paper.rect(0,0, @opt.width, @opt.height)
+      #bg = @canvas.rect(0,0, @opt.width, @opt.height)
       #bg.attr('stroke-width', 1)
 
       @data = @normalizedData(rawData)
       @drawGraph()
 
-      #@paper.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
+      #@canvas.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
+
 
   showTooltip: (e,x,y) ->
     @symbol.attr 'fill', @graph.opt.symbol.fillOnHover
 
     tooltip = @graph.tooltip
+    tooltip.bind 'mouseLeave', @hideTip
+
+    tooltip.find('.tooltip-title').text( @label )
+    tooltip.find('.tooltip-value').text( @value )
 
     tooltip.show().css
-      left  : @symbol.attr('cx') - tooltip.width()/2, 
-      top   : @symbol.attr('cy') - tooltip.height() - 10
+      left  : @symbol.attr('cx') - tooltip.innerWidth() / 2, 
+      top   : @symbol.attr('cy') - tooltip.height()
 
   hideTooltip: (e,x,y) ->
     @symbol.attr 'fill', @graph.opt.symbol.fill
+    @graph.tooltip.hide()
 
   drawGraph: -> 
     numItems = @data.length
@@ -92,18 +98,18 @@ class Graph
 
     symbolOpacity = if @opt.symbol.visible then 1.0 else 0
 
-    columnSet = @paper.set();
-    symbolSet = @paper.set();
-    linesSet  = @paper.set();
+    columnSet = @canvas.set();
+    symbolSet = @canvas.set();
+    linesSet  = @canvas.set();
 
     for index, point of @data
 
       i = parseInt(index);
 
       # create a column (hit area + location to position symbol)
-      c = @paper.rect( index * xScale + @chartX, @chartY, xScale, @chartHeight )
+      c = @canvas.rect( index * xScale + @chartX, @chartY, xScale, @chartHeight )
       c.attr
-        'fill': '#f00',
+        'fill': '#f00'
         'fill-opacity' : 0
         'stroke-width': 0
       point.column = c
@@ -112,7 +118,7 @@ class Graph
       # create symbol
       sx = Math.round(c.attr('x') + xScale / 2)
       sy = Math.round(point.value * -yScale + @chartY + @chartHeight)
-      s = @paper.circle(sx, sy, @opt.symbol.width)
+      s = @canvas.circle(sx, sy, @opt.symbol.width)
       s.attr 
         'opacity': symbolOpacity,
         'fill': @opt.symbol.fill,
@@ -122,12 +128,12 @@ class Graph
       point.symbol = s
       symbolSet.push(s)
 
-      c.hover @showTooltip, @hideTooltip, point, point
+      c.hover @colHover, @colHoverOff, point, point
 
       # draw vertical line through symbol
       #console.log  @data[index].showXLabel
       if @data[index].showXLabel
-        l = @paper.path(['M', sx, @chartY, 'V', @chartY + @chartHeight]).attr('stroke' : '#eee')
+        l = @canvas.path(['M', sx, @chartY, 'V', @chartY + @chartHeight]).attr('stroke' : '#eee')
         linesSet.push(l)
 
       # build the path that connects all the points together
@@ -145,13 +151,13 @@ class Graph
 
 
     # draw the line
-    line = @paper.path pathConnectingPoints
+    line = @canvas.path pathConnectingPoints
     line.attr
       'stroke': @opt.line.strokeColour,    
       'stroke-width': @opt.line.strokeWidth
 
     # draw the fill below the line
-    fill = @paper.path pathConnectingPoints
+    fill = @canvas.path pathConnectingPoints
     fill.attr 
       'fill': @opt.line.fill,
       'stroke-width': 0,
@@ -172,7 +178,7 @@ class Graph
       item = data[i]
       val = if item[@dataKey]? then item[@dataKey] else 0
       values.push(val)      
-      dataPoints.push new DataPoint( @, val, item['date'], item['show'] )
+      dataPoints.push new DataPoint( @, val, item['date'], item['date'], item['show'] )
 
     @dataMaxVal = Math.max.apply( Math, values )
     @dataMinVal = Math.min.apply( Math, values )
@@ -182,9 +188,27 @@ class Graph
     return dataPoints
 
   newData: (rawData) ->
-    @paper.clear()
+    @canvas.clear()
     @data = @normalizedData(rawData.periodical_facts.data)
-    @drawGraph()    
+    @drawGraph()  
+
+  colHover: (e,x,y) ->
+    @symbol.attr 'fill', @graph.opt.symbol.fillOnHover
+
+    tooltip = @graph.tooltip
+    $(tooltip).mousemove (e) ->
+      $(this).show()
+
+    tooltip.find('.tooltip-title').text( @label )
+    tooltip.find('.tooltip-value').text( @value )
+
+    tooltip.show().css
+      left  : @symbol.attr('cx') - tooltip.innerWidth() / 2, 
+      top   : @symbol.attr('cy') - tooltip.height()   
+
+  colHoverOff: (e,x,y) ->
+    @symbol.attr 'fill', @graph.opt.symbol.fill
+    $(@tooltip).hide()
 
 
 ### 
@@ -200,9 +224,10 @@ class Graph
 
 ###
 class DataPoint 
-  constructor: (graph, value, xLabel, showXLabel) ->
+  constructor: (graph, value, label, xLabel, showXLabel) ->
     @graph       = graph
     @value       = value
+    @label       = label
     @xLabel      = xLabel
     @showXLabel  = showXLabel
     @column
