@@ -1,7 +1,32 @@
+revenueChart = visitorsChart = ordersChart = null
+
 $(document).ready ->
-  revenueChart  = new Graph('graph-revenue',testJson_small.periodical_facts.data, 'visits_count', {debug: true, } )
-  visitorsChart = new Graph('graph-visitors',testJson_small.periodical_facts.data, 'visits_count', {debug: true} )
-  ordersChart   = new Graph('graph-orders',testJson_large.periodical_facts.data, 'visits_count', {debug: true, symbol:{visible: false} })  
+
+  # silly redundancy happening here for the sake of quick testing 
+
+  $('nav a').click (e) ->
+    $.ajax
+      url: this.href,
+      success: (data, textStatus, jqXHR) ->
+        if revenueChart? 
+          revenueChart.newData(data)
+        else 
+          revenueChart = new Graph('graph-revenue', data.periodical_facts.data, 'visits_count' )
+
+        if visitorsChart?
+          visitorsChart.newData(data)
+        else 
+          visitorsChart  = new Graph('graph-visitors',data.periodical_facts.data, 'visits_count' )
+
+        if ordersChart?
+          ordersChart.newData(data)
+        else 
+          ordersChart  = new Graph('graph-orders',data.periodical_facts.data, 'visits_count', {symbol:{visible: false} }) 
+
+    return false
+
+  $('nav li:eq(2) a').trigger('click')
+
 
 
 class Graph
@@ -16,8 +41,9 @@ class Graph
                   symbol : 
                     visible       : true,
                     width         : 4,
-                    fill          : '90-#3084ca-#5298d3',
-                    strokeWidth   : 2,
+                    fill          : '90-#3084ca-#72abdb',
+                    fillOnHover   : '90-#4eadfc-#2b9dfb',
+                    strokeWidth   : 3,
                     strokeColour  : '#fff',
                   line :
                     fill          : '90-#f6f6f6-#fff'
@@ -35,16 +61,28 @@ class Graph
     if document.getElementById(@domId)?
       @paper = Raphael @domId, @opt.width, @opt.height
 
+      @tooltip = $('#'+domId).append('<div class="tooltip"></div>').find('.tooltip:first')
+
       # draw a rect that's the same size as the canvas (debugging)
       #bg = @paper.rect(0,0, @opt.width, @opt.height)
       #bg.attr('stroke-width', 1)
 
       @data = @normalizedData(rawData)
-
       @drawGraph()
 
       #@paper.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
 
+  showTooltip: (e,x,y) ->
+    @symbol.attr 'fill', @graph.opt.symbol.fillOnHover
+
+    tooltip = @graph.tooltip
+
+    tooltip.show().css
+      left  : @symbol.attr('cx') - tooltip.width()/2, 
+      top   : @symbol.attr('cy') - tooltip.height() - 10
+
+  hideTooltip: (e,x,y) ->
+    @symbol.attr 'fill', @graph.opt.symbol.fill
 
   drawGraph: -> 
     numItems = @data.length
@@ -53,19 +91,23 @@ class Graph
     pathConnectingPoints = []
 
     symbolOpacity = if @opt.symbol.visible then 1.0 else 0
+
+    columnSet = @paper.set();
     symbolSet = @paper.set();
+    linesSet  = @paper.set();
 
     for index, point of @data
 
       i = parseInt(index);
 
-      # create a column
+      # create a column (hit area + location to position symbol)
       c = @paper.rect( index * xScale + @chartX, @chartY, xScale, @chartHeight )
       c.attr
-        'fill': if index % 2 == 0 then '#f9f9f9' else '#fff'
+        'fill': '#f00',
+        'fill-opacity' : 0
         'stroke-width': 0
       point.column = c
-
+      columnSet.push(c)
 
       # create symbol
       sx = Math.round(c.attr('x') + xScale / 2)
@@ -74,17 +116,26 @@ class Graph
       s.attr 
         'opacity': symbolOpacity,
         'fill': @opt.symbol.fill,
-        'stroke': @opt.symbol.strokeColor
-        'strokeWidth': @opt.symbol.strokeWidth
-      point.symbol = s
-      symbolSet.push(s);
+        'stroke': @opt.symbol.strokeColour
+        'strokeWidth': @opt.symbol.strokeWidth 
 
-      # create an array of SVG paths
+      point.symbol = s
+      symbolSet.push(s)
+
+      c.hover @showTooltip, @hideTooltip, point, point
+
+      # draw vertical line through symbol
+      #console.log  @data[index].showXLabel
+      if @data[index].showXLabel
+        l = @paper.path(['M', sx, @chartY, 'V', @chartY + @chartHeight]).attr('stroke' : '#eee')
+        linesSet.push(l)
+
+      # build the path that connects all the points together
       if i < 1 
         # first point - connect to bottom left of x axis 
         pathConnectingPoints = pathConnectingPoints.concat(['M', @chartX, @chartHeight + @chartY, 'L', sx, sy])        
 
-      if @data[index-1]
+      if i != 0
         prevPoint = @data[index-1].symbol
         pathConnectingPoints = pathConnectingPoints.concat(['L', sx, sy])
 
@@ -107,14 +158,9 @@ class Graph
       'fill-opacity': 0.05    
 
     # change ordering 
+    linesSet.toFront()
     symbolSet.toFront()
-
-    #fill = @paper.path(pathConnectingPoints).attr('fill')
-
-    # loop through all the data points, create columns, add symbol finally, connect those bitches 
-    #for i in [0..numItemsnumItems]
-    #  console.log 'lol'
-
+    columnSet.toFront()
 
 
   normalizedData: (data) ->
@@ -126,7 +172,7 @@ class Graph
       item = data[i]
       val = if item[@dataKey]? then item[@dataKey] else 0
       values.push(val)      
-      dataPoints.push new DataPoint( val, item[@dataKey], 'prettyValue', item['date'], item['show'] )
+      dataPoints.push new DataPoint( @, val, item['date'], item['show'] )
 
     @dataMaxVal = Math.max.apply( Math, values )
     @dataMinVal = Math.min.apply( Math, values )
@@ -134,6 +180,11 @@ class Graph
     @values = values # temp
 
     return dataPoints
+
+  newData: (rawData) ->
+    @paper.clear()
+    @data = @normalizedData(rawData.periodical_facts.data)
+    @drawGraph()    
 
 
 ### 
@@ -149,13 +200,11 @@ class Graph
 
 ###
 class DataPoint 
-  constructor: (value, prettyValue, xLabel, showXLabel) ->
+  constructor: (graph, value, xLabel, showXLabel) ->
+    @graph       = graph
     @value       = value
-    @prettyValue = prettyValue
     @xLabel      = xLabel
     @showXLabel  = showXLabel
-    @x
-    @y
     @column
     @symbol 
 

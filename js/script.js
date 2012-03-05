@@ -1,20 +1,37 @@
 (function() {
-  var DataPoint, Graph;
+  var DataPoint, Graph, ordersChart, revenueChart, visitorsChart;
+
+  revenueChart = visitorsChart = ordersChart = null;
 
   $(document).ready(function() {
-    var ordersChart, revenueChart, visitorsChart;
-    revenueChart = new Graph('graph-revenue', testJson_small.periodical_facts.data, 'visits_count', {
-      debug: true
+    $('nav a').click(function(e) {
+      $.ajax({
+        url: this.href,
+        success: function(data, textStatus, jqXHR) {
+          if (revenueChart != null) {
+            revenueChart.newData(data);
+          } else {
+            revenueChart = new Graph('graph-revenue', data.periodical_facts.data, 'visits_count');
+          }
+          if (visitorsChart != null) {
+            visitorsChart.newData(data);
+          } else {
+            visitorsChart = new Graph('graph-visitors', data.periodical_facts.data, 'visits_count');
+          }
+          if (ordersChart != null) {
+            return ordersChart.newData(data);
+          } else {
+            return ordersChart = new Graph('graph-orders', data.periodical_facts.data, 'visits_count', {
+              symbol: {
+                visible: false
+              }
+            });
+          }
+        }
+      });
+      return false;
     });
-    visitorsChart = new Graph('graph-visitors', testJson_small.periodical_facts.data, 'visits_count', {
-      debug: true
-    });
-    return ordersChart = new Graph('graph-orders', testJson_large.periodical_facts.data, 'visits_count', {
-      debug: true,
-      symbol: {
-        visible: false
-      }
-    });
+    return $('nav li:eq(2) a').trigger('click');
   });
 
   Graph = (function() {
@@ -35,8 +52,9 @@
         symbol: {
           visible: true,
           width: 4,
-          fill: '90-#3084ca-#5298d3',
-          strokeWidth: 2,
+          fill: '90-#3084ca-#72abdb',
+          fillOnHover: '90-#4eadfc-#2b9dfb',
+          strokeWidth: 3,
           strokeColour: '#fff'
         },
         line: {
@@ -52,44 +70,70 @@
       this.dataMaxVal = this.dataMinVal = 0;
       if (document.getElementById(this.domId) != null) {
         this.paper = Raphael(this.domId, this.opt.width, this.opt.height);
+        this.tooltip = $('#' + domId).append('<div class="tooltip"></div>').find('.tooltip:first');
         this.data = this.normalizedData(rawData);
         this.drawGraph();
       }
     }
 
+    Graph.prototype.showTooltip = function(e, x, y) {
+      var tooltip;
+      this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover);
+      tooltip = this.graph.tooltip;
+      return tooltip.show().css({
+        left: this.symbol.attr('cx') - tooltip.width() / 2,
+        top: this.symbol.attr('cy') - tooltip.height() - 10
+      });
+    };
+
+    Graph.prototype.hideTooltip = function(e, x, y) {
+      return this.symbol.attr('fill', this.graph.opt.symbol.fill);
+    };
+
     Graph.prototype.drawGraph = function() {
-      var c, fill, i, index, line, numItems, pathConnectingPoints, point, prevPoint, s, sx, sy, symbolOpacity, symbolSet, xScale, yScale, _ref;
+      var c, columnSet, fill, i, index, l, line, linesSet, numItems, pathConnectingPoints, point, prevPoint, s, sx, sy, symbolOpacity, symbolSet, xScale, yScale, _ref;
       numItems = this.data.length;
       yScale = this.chartHeight / this.dataMaxVal;
       xScale = this.chartWidth / numItems;
       pathConnectingPoints = [];
       symbolOpacity = this.opt.symbol.visible ? 1.0 : 0;
+      columnSet = this.paper.set();
       symbolSet = this.paper.set();
+      linesSet = this.paper.set();
       _ref = this.data;
       for (index in _ref) {
         point = _ref[index];
         i = parseInt(index);
         c = this.paper.rect(index * xScale + this.chartX, this.chartY, xScale, this.chartHeight);
         c.attr({
-          'fill': index % 2 === 0 ? '#f9f9f9' : '#fff',
+          'fill': '#f00',
+          'fill-opacity': 0,
           'stroke-width': 0
         });
         point.column = c;
+        columnSet.push(c);
         sx = Math.round(c.attr('x') + xScale / 2);
         sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
         s = this.paper.circle(sx, sy, this.opt.symbol.width);
         s.attr({
           'opacity': symbolOpacity,
           'fill': this.opt.symbol.fill,
-          'stroke': this.opt.symbol.strokeColor,
+          'stroke': this.opt.symbol.strokeColour,
           'strokeWidth': this.opt.symbol.strokeWidth
         });
         point.symbol = s;
         symbolSet.push(s);
+        c.hover(this.showTooltip, this.hideTooltip, point, point);
+        if (this.data[index].showXLabel) {
+          l = this.paper.path(['M', sx, this.chartY, 'V', this.chartY + this.chartHeight]).attr({
+            'stroke': '#eee'
+          });
+          linesSet.push(l);
+        }
         if (i < 1) {
           pathConnectingPoints = pathConnectingPoints.concat(['M', this.chartX, this.chartHeight + this.chartY, 'L', sx, sy]);
         }
-        if (this.data[index - 1]) {
+        if (i !== 0) {
           prevPoint = this.data[index - 1].symbol;
           pathConnectingPoints = pathConnectingPoints.concat(['L', sx, sy]);
         }
@@ -108,7 +152,9 @@
         'stroke-width': 0,
         'fill-opacity': 0.05
       });
-      return symbolSet.toFront();
+      linesSet.toFront();
+      symbolSet.toFront();
+      return columnSet.toFront();
     };
 
     Graph.prototype.normalizedData = function(data) {
@@ -120,12 +166,18 @@
         item = data[i];
         val = item[this.dataKey] != null ? item[this.dataKey] : 0;
         values.push(val);
-        dataPoints.push(new DataPoint(val, item[this.dataKey], 'prettyValue', item['date'], item['show']));
+        dataPoints.push(new DataPoint(this, val, item['date'], item['show']));
       }
       this.dataMaxVal = Math.max.apply(Math, values);
       this.dataMinVal = Math.min.apply(Math, values);
       this.values = values;
       return dataPoints;
+    };
+
+    Graph.prototype.newData = function(rawData) {
+      this.paper.clear();
+      this.data = this.normalizedData(rawData.periodical_facts.data);
+      return this.drawGraph();
     };
 
     return Graph;
@@ -146,13 +198,11 @@
 
   DataPoint = (function() {
 
-    function DataPoint(value, prettyValue, xLabel, showXLabel) {
+    function DataPoint(graph, value, xLabel, showXLabel) {
+      this.graph = graph;
       this.value = value;
-      this.prettyValue = prettyValue;
       this.xLabel = xLabel;
       this.showXLabel = showXLabel;
-      this.x;
-      this.y;
       this.column;
       this.symbol;
     }

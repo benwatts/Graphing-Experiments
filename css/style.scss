@@ -76,13 +76,30 @@ td { vertical-align: top; }
 
  #main { width: 960px; margin: 0 auto; }
 
-.graph circle { }
+ #title{ float: left; }
+ 
+
+.graph { position: relative; }
 
 .line-graph-large { width: 960px; height: 300px; }
 .line-graph-small { width: 460px; height: 200px; }
 
 
+nav { float: right; padding-top: 22px;}
 
+nav li{
+  float: left;
+  margin: 0 0 0 20px;
+  font-size: 14px;
+}
+
+.tooltip { 
+  width: 20px; 
+  height: 20px; 
+  background: #000; 
+  position: absolute;
+  z-index: 10;
+}
 
 @media only screen and (min-width: 35em) {
   
@@ -113,3 +130,5 @@ td { vertical-align: top; }
   p, h2, h3 { orphans: 3; widows: 3; }
   h2, h3 { page-break-after: avoid; }
 }
+
+.active { font-weight: bold; }
