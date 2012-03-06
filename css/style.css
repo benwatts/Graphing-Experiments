@@ -249,7 +249,6 @@ nav li {
   margin: -18px 0 0 0;
   background: #000;
   position: absolute;
-  z-index: 1;
   display: none;
   font-size: 11px;
   color: #ccc;

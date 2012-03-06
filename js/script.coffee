@@ -11,21 +11,21 @@ $(document).ready ->
         if revenueChart? 
           revenueChart.newData(data)
         else 
-          revenueChart = new Graph('graph-revenue', data.periodical_facts.data, 'visits_count' )
+          revenueChart = new Graph('graph-revenue', data, 'visits_count' )
 
         if visitorsChart?
           visitorsChart.newData(data)
         else 
-          visitorsChart  = new Graph('graph-visitors',data.periodical_facts.data, 'visits_count' )
+          visitorsChart  = new Graph('graph-visitors',data, 'visits_count' )
 
         if ordersChart?
           ordersChart.newData(data)
         else 
-          ordersChart  = new Graph('graph-orders',data.periodical_facts.data, 'visits_count', {symbol:{visible: false} }) 
+          ordersChart  = new Graph('graph-orders',data, 'visits_count', {symbol:{visible: false}}) 
 
     return false
 
-  $('nav li:eq(2) a').trigger('click')
+  $('nav li:eq(2) a').trigger('click') # trigger some data to be loaded, why not. 
 
 
 
@@ -34,22 +34,27 @@ class Graph
   constructor: (domId, rawData, dataKey, options={}) -> 
     @domId    = domId
     @dataKey  = dataKey
-    @opt      = $.extend {
-                  height : $('#'+domId).height(),
-                  width  : $('#'+domId).width(),
-                  gutter : { top: 10, right: 10, bottom: 20, left: 40 }
-                  symbol : 
-                    visible       : true,
-                    width         : 4,
-                    fill          : '90-#3084ca-#72abdb',
-                    fillOnHover   : '90-#4eadfc-#2b9dfb',
-                    strokeWidth   : 3,
-                    strokeColour  : '#fff',
-                  line :
-                    fill          : '90-#f6f6f6-#fff'
-                    strokeWidth   : 2,
-                    strokeColour  : '#d4d4d4',
-                }, options
+    @opt      = {}
+
+    $.extend true, @opt, {
+      height : $('#'+domId).height()
+      width  : $('#'+domId).width()
+      gutter : { top: 10, right: 10, bottom: 20, left: 40 }
+      grid   :
+        strokeColour  : '#eee'
+        strokeColourOnHover : '#ddd'
+      symbol : 
+        radius        : 4
+        fill          : '90-#3084ca-#72abdb'
+        fillOnHover   : '90-#4eadfc-#2b9dfb'
+        strokeWidth   : 2
+        strokeColour  : '#fff'
+        visible       : true                    
+      line :
+        fill          : '90-#f6f6f6-#fff'
+        strokeWidth   : 2
+        strokeColour  : '#d4d4d4'
+    }, options
 
     @chartX      = @opt.gutter.left
     @chartY      = @opt.gutter.top
@@ -72,35 +77,23 @@ class Graph
 
       #@canvas.linechart(@chartX, @chartY, @chartWidth, @chartHeight, [0..@values.length-1], @values, { shade: true, symbol: 'circle', gutter: 0.1 })
 
-
-  showTooltip: (e,x,y) ->
-    @symbol.attr 'fill', @graph.opt.symbol.fillOnHover
-
-    tooltip = @graph.tooltip
-    tooltip.bind 'mouseLeave', @hideTip
-
-    tooltip.find('.tooltip-title').text( @label )
-    tooltip.find('.tooltip-value').text( @value )
-
-    tooltip.show().css
-      left  : @symbol.attr('cx') - tooltip.innerWidth() / 2, 
-      top   : @symbol.attr('cy') - tooltip.height()
-
-  hideTooltip: (e,x,y) ->
-    @symbol.attr 'fill', @graph.opt.symbol.fill
-    @graph.tooltip.hide()
-
   drawGraph: -> 
     numItems = @data.length
-    yScale = @chartHeight / @dataMaxVal
     xScale = @chartWidth / numItems
     pathConnectingPoints = []
-
-    symbolOpacity = if @opt.symbol.visible then 1.0 else 0
 
     columnSet = @canvas.set();
     symbolSet = @canvas.set();
     linesSet  = @canvas.set();
+
+    # draw y-axis lines
+    yScale = @chartHeight / @dataMaxVal
+    yIncrements = @chartHeight / yScale
+    for i in [0..yIncrements]
+      @canvas.path(['M', @chartX, Math.round(@chartY + yScale * i), 'H', @chartX + @chartWidth]).attr('stroke' : '#eee')
+
+    # hide symbols if the density of points is too high
+    @opt.symbol.visible =  if numItems * (@opt.symbol.radius*2) > @chartWidth then false else true    
 
     for index, point of @data
 
@@ -118,36 +111,41 @@ class Graph
       # create symbol
       sx = Math.round(c.attr('x') + xScale / 2)
       sy = Math.round(point.value * -yScale + @chartY + @chartHeight)
-      s = @canvas.circle(sx, sy, @opt.symbol.width)
+      s = @canvas.circle(sx, sy, @opt.symbol.radius)
       s.attr 
-        'opacity': symbolOpacity,
         'fill': @opt.symbol.fill,
         'stroke': @opt.symbol.strokeColour
-        'strokeWidth': @opt.symbol.strokeWidth 
+        'stroke-width': @opt.symbol.strokeWidth 
+      if not @opt.symbol.visible then s.hide()
 
       point.symbol = s
       symbolSet.push(s)
 
-      c.hover @colHover, @colHoverOff, point, point
-
       # draw vertical line through symbol
-      #console.log  @data[index].showXLabel
+      l = @canvas.path(['M', sx, @chartY, 'V', @chartY + @chartHeight]).attr('stroke' : '#eee')
+      if not @data[index].showXLabel then l.hide()
+      linesSet.push(l)
+      point.xLine = l
+
+      # draw x-axis label, if appropriate 
       if @data[index].showXLabel
-        l = @canvas.path(['M', sx, @chartY, 'V', @chartY + @chartHeight]).attr('stroke' : '#eee')
-        linesSet.push(l)
+        t = @canvas.text sx, @chartY + @chartHeight + 10 , @data[index].xLabel
+
 
       # build the path that connects all the points together
       if i < 1 
-        # first point - connect to bottom left of x axis 
-        pathConnectingPoints = pathConnectingPoints.concat(['M', @chartX, @chartHeight + @chartY, 'L', sx, sy])        
+        pathConnectingPoints = pathConnectingPoints.concat(['M', @chartX, @chartHeight + @chartY, 'L', sx, sy]) # first point - connect to bottom left of x axis       
 
       if i != 0
         prevPoint = @data[index-1].symbol
         pathConnectingPoints = pathConnectingPoints.concat(['L', sx, sy])
 
       if i == numItems-1 
-        # last point - connect to bottom right of x axis
-        pathConnectingPoints = pathConnectingPoints.concat(['L', @chartWidth + @chartX, @chartHeight + @chartY])
+        pathConnectingPoints = pathConnectingPoints.concat(['L', @chartWidth + @chartX, @chartHeight + @chartY]) # last point - connect to bottom right of x axis
+
+
+      # hover over a column? highlight the column + show a bubble
+      c.hover @colHover, @colHoverOff, point, point        
 
 
     # draw the line
@@ -169,16 +167,18 @@ class Graph
     columnSet.toFront()
 
 
-  normalizedData: (data) ->
+  normalizedData: (raw) ->
+    data = raw.periodical_facts.data
     numDataPoints = data.length - 1
     dataPoints = []
-    values = []
+    values     = []
+    timeOnly  = if raw.start_date is raw.end_date then true else false
 
     for i in [0..numDataPoints]
       item = data[i]
       val = if item[@dataKey]? then item[@dataKey] else 0
       values.push(val)      
-      dataPoints.push new DataPoint( @, val, item['date'], item['date'], item['show'] )
+      dataPoints.push new DataPoint( @, val, item['date'], @prettyDate(item['date'], timeOnly), item['show'] )
 
     @dataMaxVal = Math.max.apply( Math, values )
     @dataMinVal = Math.min.apply( Math, values )
@@ -187,18 +187,27 @@ class Graph
 
     return dataPoints
 
-  newData: (rawData) ->
+
+  prettyDate: ( date, timeOnly = false ) -> 
+    # should use batman filters, I think
+    if timeOnly 
+      date = date.split(' ')[1].substr(0,5)
+
+    return date
+
+
+
+
+  newData: (raw) ->
     @canvas.clear()
-    @data = @normalizedData(rawData.periodical_facts.data)
+    @data = @normalizedData(raw)
     @drawGraph()  
 
   colHover: (e,x,y) ->
-    @symbol.attr 'fill', @graph.opt.symbol.fillOnHover
+    @symbol.attr( 'fill', @graph.opt.symbol.fillOnHover ).show()
+    @xLine.attr( 'stroke', @graph.opt.grid.strokeColourOnHover ).show()
 
     tooltip = @graph.tooltip
-    $(tooltip).mousemove (e) ->
-      $(this).show()
-
     tooltip.find('.tooltip-title').text( @label )
     tooltip.find('.tooltip-value').text( @value )
 
@@ -208,7 +217,15 @@ class Graph
 
   colHoverOff: (e,x,y) ->
     @symbol.attr 'fill', @graph.opt.symbol.fill
-    $(@tooltip).hide()
+    if not @graph.opt.symbol.visible then @symbol.hide()
+
+    @xLine.attr 'stroke', @graph.opt.grid.strokeColour
+    if not @showXLabel then @xLine.hide()
+
+    $(@graph.tooltip).hide()
+
+
+
 
 
 ### 
@@ -230,6 +247,7 @@ class DataPoint
     @label       = label
     @xLabel      = xLabel
     @showXLabel  = showXLabel
+    @xLine
     @column
-    @symbol 
+    @symbol
 

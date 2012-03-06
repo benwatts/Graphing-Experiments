@@ -11,17 +11,17 @@
           if (revenueChart != null) {
             revenueChart.newData(data);
           } else {
-            revenueChart = new Graph('graph-revenue', data.periodical_facts.data, 'visits_count');
+            revenueChart = new Graph('graph-revenue', data, 'visits_count');
           }
           if (visitorsChart != null) {
             visitorsChart.newData(data);
           } else {
-            visitorsChart = new Graph('graph-visitors', data.periodical_facts.data, 'visits_count');
+            visitorsChart = new Graph('graph-visitors', data, 'visits_count');
           }
           if (ordersChart != null) {
             return ordersChart.newData(data);
           } else {
-            return ordersChart = new Graph('graph-orders', data.periodical_facts.data, 'visits_count', {
+            return ordersChart = new Graph('graph-orders', data, 'visits_count', {
               symbol: {
                 visible: false
               }
@@ -40,7 +40,8 @@
       if (options == null) options = {};
       this.domId = domId;
       this.dataKey = dataKey;
-      this.opt = $.extend({
+      this.opt = {};
+      $.extend(true, this.opt, {
         height: $('#' + domId).height(),
         width: $('#' + domId).width(),
         gutter: {
@@ -49,13 +50,17 @@
           bottom: 20,
           left: 40
         },
+        grid: {
+          strokeColour: '#eee',
+          strokeColourOnHover: '#ddd'
+        },
         symbol: {
-          visible: true,
-          width: 4,
+          radius: 4,
           fill: '90-#3084ca-#72abdb',
           fillOnHover: '90-#4eadfc-#2b9dfb',
-          strokeWidth: 3,
-          strokeColour: '#fff'
+          strokeWidth: 2,
+          strokeColour: '#fff',
+          visible: true
         },
         line: {
           fill: '90-#f6f6f6-#fff',
@@ -76,34 +81,22 @@
       }
     }
 
-    Graph.prototype.showTooltip = function(e, x, y) {
-      var tooltip;
-      this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover);
-      tooltip = this.graph.tooltip;
-      tooltip.bind('mouseLeave', this.hideTip);
-      tooltip.find('.tooltip-title').text(this.label);
-      tooltip.find('.tooltip-value').text(this.value);
-      return tooltip.show().css({
-        left: this.symbol.attr('cx') - tooltip.innerWidth() / 2,
-        top: this.symbol.attr('cy') - tooltip.height()
-      });
-    };
-
-    Graph.prototype.hideTooltip = function(e, x, y) {
-      this.symbol.attr('fill', this.graph.opt.symbol.fill);
-      return this.graph.tooltip.hide();
-    };
-
     Graph.prototype.drawGraph = function() {
-      var c, columnSet, fill, i, index, l, line, linesSet, numItems, pathConnectingPoints, point, prevPoint, s, sx, sy, symbolOpacity, symbolSet, xScale, yScale, _ref;
+      var c, columnSet, fill, i, index, l, line, linesSet, numItems, pathConnectingPoints, point, prevPoint, s, sx, sy, symbolSet, t, xScale, yIncrements, yScale, _ref;
       numItems = this.data.length;
-      yScale = this.chartHeight / this.dataMaxVal;
       xScale = this.chartWidth / numItems;
       pathConnectingPoints = [];
-      symbolOpacity = this.opt.symbol.visible ? 1.0 : 0;
       columnSet = this.canvas.set();
       symbolSet = this.canvas.set();
       linesSet = this.canvas.set();
+      yScale = this.chartHeight / this.dataMaxVal;
+      yIncrements = this.chartHeight / yScale;
+      for (i = 0; 0 <= yIncrements ? i <= yIncrements : i >= yIncrements; 0 <= yIncrements ? i++ : i--) {
+        this.canvas.path(['M', this.chartX, Math.round(this.chartY + yScale * i), 'H', this.chartX + this.chartWidth]).attr({
+          'stroke': '#eee'
+        });
+      }
+      this.opt.symbol.visible = numItems * (this.opt.symbol.radius * 2) > this.chartWidth ? false : true;
       _ref = this.data;
       for (index in _ref) {
         point = _ref[index];
@@ -118,21 +111,23 @@
         columnSet.push(c);
         sx = Math.round(c.attr('x') + xScale / 2);
         sy = Math.round(point.value * -yScale + this.chartY + this.chartHeight);
-        s = this.canvas.circle(sx, sy, this.opt.symbol.width);
+        s = this.canvas.circle(sx, sy, this.opt.symbol.radius);
         s.attr({
-          'opacity': symbolOpacity,
           'fill': this.opt.symbol.fill,
           'stroke': this.opt.symbol.strokeColour,
-          'strokeWidth': this.opt.symbol.strokeWidth
+          'stroke-width': this.opt.symbol.strokeWidth
         });
+        if (!this.opt.symbol.visible) s.hide();
         point.symbol = s;
         symbolSet.push(s);
-        c.hover(this.colHover, this.colHoverOff, point, point);
+        l = this.canvas.path(['M', sx, this.chartY, 'V', this.chartY + this.chartHeight]).attr({
+          'stroke': '#eee'
+        });
+        if (!this.data[index].showXLabel) l.hide();
+        linesSet.push(l);
+        point.xLine = l;
         if (this.data[index].showXLabel) {
-          l = this.canvas.path(['M', sx, this.chartY, 'V', this.chartY + this.chartHeight]).attr({
-            'stroke': '#eee'
-          });
-          linesSet.push(l);
+          t = this.canvas.text(sx, this.chartY + this.chartHeight + 10, this.data[index].xLabel);
         }
         if (i < 1) {
           pathConnectingPoints = pathConnectingPoints.concat(['M', this.chartX, this.chartHeight + this.chartY, 'L', sx, sy]);
@@ -144,6 +139,7 @@
         if (i === numItems - 1) {
           pathConnectingPoints = pathConnectingPoints.concat(['L', this.chartWidth + this.chartX, this.chartHeight + this.chartY]);
         }
+        c.hover(this.colHover, this.colHoverOff, point, point);
       }
       line = this.canvas.path(pathConnectingPoints);
       line.attr({
@@ -161,16 +157,18 @@
       return columnSet.toFront();
     };
 
-    Graph.prototype.normalizedData = function(data) {
-      var dataPoints, i, item, numDataPoints, val, values;
+    Graph.prototype.normalizedData = function(raw) {
+      var data, dataPoints, i, item, numDataPoints, timeOnly, val, values;
+      data = raw.periodical_facts.data;
       numDataPoints = data.length - 1;
       dataPoints = [];
       values = [];
+      timeOnly = raw.start_date === raw.end_date ? true : false;
       for (i = 0; 0 <= numDataPoints ? i <= numDataPoints : i >= numDataPoints; 0 <= numDataPoints ? i++ : i--) {
         item = data[i];
         val = item[this.dataKey] != null ? item[this.dataKey] : 0;
         values.push(val);
-        dataPoints.push(new DataPoint(this, val, item['date'], item['date'], item['show']));
+        dataPoints.push(new DataPoint(this, val, item['date'], this.prettyDate(item['date'], timeOnly), item['show']));
       }
       this.dataMaxVal = Math.max.apply(Math, values);
       this.dataMinVal = Math.min.apply(Math, values);
@@ -178,19 +176,23 @@
       return dataPoints;
     };
 
-    Graph.prototype.newData = function(rawData) {
+    Graph.prototype.prettyDate = function(date, timeOnly) {
+      if (timeOnly == null) timeOnly = false;
+      if (timeOnly) date = date.split(' ')[1].substr(0, 5);
+      return date;
+    };
+
+    Graph.prototype.newData = function(raw) {
       this.canvas.clear();
-      this.data = this.normalizedData(rawData.periodical_facts.data);
+      this.data = this.normalizedData(raw);
       return this.drawGraph();
     };
 
     Graph.prototype.colHover = function(e, x, y) {
       var tooltip;
-      this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover);
+      this.symbol.attr('fill', this.graph.opt.symbol.fillOnHover).show();
+      this.xLine.attr('stroke', this.graph.opt.grid.strokeColourOnHover).show();
       tooltip = this.graph.tooltip;
-      $(tooltip).mousemove(function(e) {
-        return $(this).show();
-      });
       tooltip.find('.tooltip-title').text(this.label);
       tooltip.find('.tooltip-value').text(this.value);
       return tooltip.show().css({
@@ -201,7 +203,10 @@
 
     Graph.prototype.colHoverOff = function(e, x, y) {
       this.symbol.attr('fill', this.graph.opt.symbol.fill);
-      return $(this.tooltip).hide();
+      if (!this.graph.opt.symbol.visible) this.symbol.hide();
+      this.xLine.attr('stroke', this.graph.opt.grid.strokeColour);
+      if (!this.showXLabel) this.xLine.hide();
+      return $(this.graph.tooltip).hide();
     };
 
     return Graph;
@@ -228,6 +233,7 @@
       this.label = label;
       this.xLabel = xLabel;
       this.showXLabel = showXLabel;
+      this.xLine;
       this.column;
       this.symbol;
     }
